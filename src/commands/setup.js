@@ -28,11 +28,9 @@ module.exports = {
     const guild = interaction.guild;
     const guildData = db.getGuild(guild.id);
 
-    // Prevent double setup
     if (guildData.panelChannelId && guild.channels.cache.has(guildData.panelChannelId)) {
       return interaction.editReply({
-        content:
-          'This server is already set up. To redo the setup, delete the existing Ranked Tickets channels and categories first, then run `/setup` again.'
+        content: 'This server is already set up. To redo the setup, delete the existing Ranked Tickets channels and categories first, then run `/setup` again.'
       });
     }
 
@@ -70,10 +68,19 @@ module.exports = {
         ]
       });
 
-      // ── Transcript category ────────────────────────────────────────────
-      const transcriptCategory = await guild.channels.create({
-        name: 'Transcripts',
+      // ── Staff category with transcripts channel ────────────────────────
+      const staffCategory = await guild.channels.create({
+        name: 'Staff',
         type: ChannelType.GuildCategory,
+        permissionOverwrites: [
+          { id: guild.roles.everyone.id, deny: [PermissionFlagsBits.ViewChannel] }
+        ]
+      });
+
+      const transcriptChannel = await guild.channels.create({
+        name: 'transcripts',
+        type: ChannelType.GuildText,
+        parent: staffCategory.id,
         permissionOverwrites: [
           { id: guild.roles.everyone.id, deny: [PermissionFlagsBits.ViewChannel] }
         ]
@@ -97,7 +104,7 @@ module.exports = {
       // ── Save to DB ─────────────────────────────────────────────────────
       db.setGuild(guild.id, {
         panelChannelId: panelChannel.id,
-        transcriptCategoryId: transcriptCategory.id,
+        transcriptChannelId: transcriptChannel.id,
         categories: {
           hacks: hacksCategory.id,
           alts: altsCategory.id,
@@ -111,7 +118,7 @@ module.exports = {
         .setDescription('Ranked Tickets has been successfully initialized.')
         .addFields(
           { name: 'Panel Channel', value: `<#${panelChannel.id}>`, inline: true },
-          { name: 'Transcript Category', value: transcriptCategory.name, inline: true },
+          { name: 'Transcripts', value: `<#${transcriptChannel.id}>`, inline: true },
           {
             name: 'Ticket Categories',
             value: [
@@ -130,8 +137,7 @@ module.exports = {
     } catch (err) {
       console.error('[setup] Error during setup:', err);
       return interaction.editReply({
-        content:
-          'An error occurred during setup. Please ensure the bot has Administrator permissions and try again.'
+        content: 'An error occurred during setup. Please ensure the bot has Administrator permissions and try again.'
       });
     }
   }
